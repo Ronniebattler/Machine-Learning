@@ -5,3 +5,9 @@ Notes for Machine Learning sturdy
 ### 导论
 
 ### Particle Fitlter 粒子滤波
+
+### HMM
+
+### 决策树
+
+### SVM
