@@ -1,0 +1,6 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {1}HMM}{2}{section.1}%
+\contentsline {section}{\numberline {2}求解步骤}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}估计问题 (Evaluation Problem)}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}解码问题 (Decoding Problem)}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}学习问题 (Learning Problem)}{3}{subsection.2.3}%
