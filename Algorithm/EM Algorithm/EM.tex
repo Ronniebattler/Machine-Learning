@@ -1,0 +1,646 @@
+\documentclass[UTF8,12pt]{ctexart}
+
+\usepackage{geometry}%排版
+
+%%%%%%%%%%%%数学%%%%%%%%%%%%%%%%
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}%公式
+\usepackage{amsthm}%定理环境
+%\usepackage{ntheorem}%定理环境，使用这个会使\maketitle版式出问题
+\usepackage{mathrsfs}
+\usepackage{witharrows}
+
+\numberwithin{equation}{section}%对公式以节{section}为基础进行编号.变成（1.1.1）有chapter才有1.1.1，不然只有section是1.1
+%\theoremstyle{plain}%定理用latex默认的版式
+\newtheorem{thm}{Theorem}[section]
+%\theoremstyle{definition}%定义用definition格式
+\newtheorem{defn}{Definition}
+%\theoremstyle{remark}%用remark格式
+\newtheorem{lemma}[thm]{lemma}
+\newtheorem{example}{Example}[section]
+\newtheorem{prop}{命题}[section]   % 定义新的命题环境
+\usepackage{bm}%加粗
+
+%%%%%%%%%%%%表格%%%%%%%%%%%%
+\usepackage{multirow}%表格列合并宏包，\multirow命令.
+\usepackage{tabularx}%表格等宽，\begin{tabularx}命令.
+	
+%%%%%%%%%%%%图片%%%%%%%%%%%%	
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subfigure} %插入多图时用子图显示的宏包
+	
+%%%%%%%%%%%%算法%%%%%%%%%%%%
+%\usepackage{algorithm,algorithmic}%算法
+\usepackage{algorithm}
+%\usepackage{algorithmic}
+\usepackage{algpseudocode}
+	
+%%%%%%%%%%%%代码%%%%%%%%%%%%	
+%\usepackage{minted}
+	
+%%%%%%%%%%%%盒子%%%%%%%%%%%%%
+%main
+\usepackage{varwidth}
+\usepackage{tikz}
+\usetikzlibrary{calc} % 引入 calc 库以使用高级坐标计算
+%\usepackage{xeCJK}
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{xparse,hooks,skins,breakable}
+\tcbuselibrary{listings}
+\usepackage{fontawesome}
+\usepackage{mdframed}
+\usepackage{xcolor}	
+\input{box.tex}	
+
+\definecolor{citecolor}{RGB}{60,120,216}
+\definecolor{urlcolor}{RGB}{60,120,216}
+\definecolor{linkcolor}{RGB}{60,120,216}
+
+\usepackage{hyperref}%可以生成pdf书签，可以跳转
+\hypersetup{
+	colorlinks=true,%引用部分会显示颜色
+	linkcolor=linkcolor, %
+	urlcolor=urlcolor,%
+	allcolors=blue,
+	citecolor=citecolor,
+	pdftitle={EM Algorithm},%这个命令会使用pdf阅读器打开时左上角显示这个内容
+}
+
+	
+%\tcbuselibrary{skins, breakable}% 支持文本框跨页
+	
+%%%%%%%%%%%%参考文献%%%%%%%%%%%%%
+\usepackage[round]{natbib}
+	
+%%%%%%%%%%%%其他%%%%%%%%%%%%%
+\usepackage[english]{babel}% 载入美式英语断字模板
+\usepackage{caption}
+	
+	
+\usepackage{marginnote}
+%\usepackage{xcolor} % 用于颜色设置
+\usepackage{lipsum} % 生成示例文本
+\usepackage{ifthen} % 提供条件判断命令
+\usepackage{graphicx}
+	
+% 定义边注颜色
+\definecolor{mynotecolor}{rgb}{0.6, 0.4, 0.2} % 棕色
+	
+\newcommand{\mymarginnote}[1]{
+	\ifthenelse{\isodd{\value{page}}}
+	{\normalmarginpar\marginnote{\textcolor{mynotecolor}{#1}}} % 奇数页的边注
+	{\reversemarginpar\marginnote{\textcolor{mynotecolor}{#1}}} % 偶数页的边注
+}
+	
+	
+%%%%%%%%%%%%标题页%%%%%%%%%%%%%
+\title{EM Algorithm}
+\author{Renhe W.}
+\date{ }
+	
+\begin{document}
+	\captionsetup[figure]{labelfont={bf},labelformat={default},labelsep=period,name={图}}%设置图注
+	%\newgeometry{left=3cm,right=3cm,top=3cm,bottom=3cm}
+	%\pagestyle{empty} % 可选，如果您不想在标题页和目录页显示页眉和页脚
+		
+	\maketitle
+	\tableofcontents%目录
+	\listoffigures%图片目录
+	\listoftables%表格目录
+	\newpage
+	\kaishu
+	
+	% 恢复双面布局
+	%\restoregeometry
+	%\pagestyle{headings} % 恢复页眉和页脚
+	
+		
+	%------------------------------------------- 
+	\section{EM算法}
+	EM算法的普遍应用主要归功于DLR \citep{dempster1977maximum}，他们在研究中还提供了许多其适用性示例，并在相当普遍的条件下确立了其收敛性和其他基本性质。对于一个具有隐藏状态的系统，我们假设观测序列为$\mathbf{y}=\{y_1,y_2,\dots,y_T\}$，隐藏状态为$\mathbf{s}=\{s_1,s_2,\dots,s_T\}$，其中$T$是观测序列时长. 定义非完全信息似然函数（incomplete-data likelihood function）为$L(\mathbf{y}\mid \mathbf{\theta})$，其中$\boldsymbol{\theta}$是模型参数，则有：
+	\begin{DispWithArrows}[tikz=blue,tagged-lines=last]
+		\log L(\mathbf{y} \mid \boldsymbol{\theta}) & =\log f(\mathbf{y} \mid \boldsymbol{\theta}) \Arrow{联系完全似然}\\
+		& =\log f(\mathbf{y} \mid \boldsymbol{\theta}) \cdot \frac{f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})} \\
+		& =\log  f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})\cdot \frac{f(\mathbf{y} \mid \boldsymbol{\theta})}{f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})} \Arrow{条件概率}\\
+		& =\log\underbrace{f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}_{\text{完全信息似然函数}}-\log f(\mathbf{s} \mid \mathbf{y}, \theta)\label{incomplete data decomposition}
+	\end{DispWithArrows}
+	同时对\eqref{incomplete data decomposition}式子两边关于$\mathbf{y}$和$\boldsymbol{\theta}'$取期望可以得到：
+	%\vspace{-20pt}
+    \begin{DispWithArrows}[tikz=blue,tagged-lines=last]
+    	\sum_s \log L(\mathbf{y} \mid \boldsymbol{\theta}) \cdot f\left(\mathbf{s}\mid \mathbf{y}, \boldsymbol{\theta}^{\prime}\right) & =\sum_s \log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta}) \cdot f\left(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{\prime}\right)-\sum_s \log f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) \cdot f\left(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{\prime}\right) \\
+    	\Rightarrow \quad  \log L(\mathbf{y} \mid \boldsymbol{\theta}) \cdot \underbrace{\sum_sf\left(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{\prime}\right) }_{=1}  & =E\left(\log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}^{\prime}\right)-E\left(\log f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}^{\prime}\right) \\
+    	\Rightarrow \quad		\log L(\mathbf{y} \mid \boldsymbol{\theta})		& =Q\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{\prime}\right)-H\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{\prime}\right).\label{likelihood relation with Q function}
+    \end{DispWithArrows}
+	
+	\subsection{EM Algorithm}
+	EM算法（期望最大化算法）是一种用于含有隐变量的统计数据估计的迭代算法。它通过交替执行两个步骤：期望步骤（E-step）和最大化步骤（M-step）——来找到参数的最大似然估计或最大后验估计.EM算法的目的是最大化非完全信息似然函数$L(\mathbf{y} \mid \boldsymbol{\theta})$。在这种情况下，EM算法的两个步骤可以这样表述：
+	
+	\begin{ascolorbox13}[步骤]{EM算法}
+		\ascboxB*[C]{\textbf{1. E-Step（期望步骤）:}}
+		在第$k$次迭代中，E-step的目的是计算在当前参数估计$\boldsymbol{\theta}^{(k)}$的条件下，完全数据对数似然函数$\log L(\mathbf{y}, s \mid \boldsymbol{\theta})$的期望值。这一步骤可以表示为：
+		\[ Q\left(\boldsymbol{\theta} ; \boldsymbol{\theta}^{(k)}\right) = E\left(\log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}\right) \]
+		其中$Q(\boldsymbol{\theta}; \boldsymbol{\theta}^{(k)})$是在给定观测数据$\mathbf{y}$和当前参数估计$\boldsymbol{\theta}^{(k)}$的情况下，关于隐状态的完全数据对数似然的期望.
+		
+		\ascboxB*[C]{\textbf{2. M-Step（最大化步骤）:}}
+		在M-step中，目标是找到参数$\boldsymbol{\theta}$的新估计值$\boldsymbol{\theta}^{(k+1)}$，使得$Q(\boldsymbol{\theta}; \boldsymbol{\theta}^{(k)})$最大化. 数学上表示为：
+		\[ \boldsymbol{\theta}^{(k+1)} = \arg \max_{\boldsymbol{\theta}} Q(\boldsymbol{\theta}; \boldsymbol{\theta}^{(k)}) \]
+		选择$\boldsymbol{\theta}^{(k+1)}$作为参数$\boldsymbol{\theta}$的新估计值，使得$Q$函数在这一点上达到最大.
+		
+		通过交替执行这两个步骤，EM算法在每次迭代中更新参数$\boldsymbol{\theta}$的估计值，直到似然函数$L(\boldsymbol{\theta})$的值收敛到一个固定值，或达到预定的迭代次数。这个过程保证了每次迭代后，不完全数据的对数似然函数$L(\boldsymbol{\theta})$不会减少，从而实现对参数的有效估计.
+	\end{ascolorbox13}
+	
+	
+
+	
+
+	
+	\subsection{How it works?}
+	DLR（Dempster, Laird, and Rubin）在他们的工作中证明了，在一定条件下，EM算法可以保证每次迭代后，不完全数据的对数似然函数$L(\mathbf{y}\mid \boldsymbol{\theta})$不会减少. 这意味着，通过EM算法得到的参数估计序列将收敛到一个局部最大值. 
+	
+	\begin{prop}[单调不减（MONOTONICITY）]\label{MONOTONICITY}
+		$L(\mathbf{y}\mid \boldsymbol{\theta}^{(k+1)})\ge L(\mathbf{y}\mid \boldsymbol{\theta}^{(k)})$.
+	\end{prop}
+	
+	\begin{proof} 根据\eqref{likelihood relation with Q function}式，有
+		$$
+		\begin{aligned}
+			& \log L\left(\mathbf{y} \mid \boldsymbol{\theta}^{(k+1)}\right)-\log L\left(y \mid \boldsymbol{\theta}^{(k)}\right) \\
+			= & \underbrace{\left\{Q\left(\boldsymbol{\theta}^{(k+1)}, \boldsymbol{\theta}^{(k)}\right)-Q\left(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)}\right)\right\}}_{\operatorname{term1}}
+			\underbrace{-
+			\left\{H\left(\boldsymbol{\theta}^{(k+1)} , \boldsymbol{\theta}^{(k)}\right)-H\left(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)}\right)\right\} }_{\operatorname{term2}} \\
+			= & \operatorname{term1} +\operatorname{term2},
+		\end{aligned}
+		$$
+		其中$\operatorname{term1}$中的Q函数每一步进行的过程中都有求导梯度更新，所以有$Q\left(\boldsymbol{\theta}^{(k+1)}, \boldsymbol{\theta}^{(k)}\right)\ge Q\left(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)}\right)$，现在的主要工作为$\operatorname{term2}$，对于$\boldsymbol{\theta}\in\Omega$，若$\operatorname{term2}$每次更新都是负值，i.e. $H\left(\boldsymbol{\theta}^{(k+1)} , \boldsymbol{\theta}^{(k)}\right)\le H\left(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)}\right)$ ，则命题\ref{MONOTONICITY}成立，下面给出其中一个证明：
+		
+		对于任意参数$\boldsymbol{\theta}$，有：
+		$$
+		\begin{WithArrows}[tikz=blue]
+			H(\boldsymbol{\theta} , \boldsymbol{\theta}^{(k)})&- H(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)})\\
+			&= E\left(\log f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}\right)-E\left(\log f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}) \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}\right)\\
+			&= E\left(\log f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta})/f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}) \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}\right)\Arrow{Jensen inequality}\\
+			&\le \log[E\left( f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta})/f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}) \mid \mathbf{y}, \boldsymbol{\theta}^{(k)}\right)]\\
+			&=log\sum_s \frac{f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta})}{f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{(k)})}\cdot f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}^{(k)})\\
+			&= log\sum_s f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta})= \log 1 = 0.
+		\end{WithArrows}
+		$$
+		综上，对数似然函数$L(\mathbf{y}\mid \boldsymbol{\theta})$通过EM算法更新迭代一直单调不减.	
+	\end{proof}
+	\begin{marker}
+		对于$H\left(\boldsymbol{\theta}^{(k+1)} , \boldsymbol{\theta}^{(k)}\right)\le H\left(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)}\right)$，还可以运用KL散度进行证明，KL散度是衡量两个概率分布间差异的度量，定义为
+		$$D_{\mathrm{KL}}(P \| Q)=\sum_x P(x) \log \frac{P(x)}{Q(x)}$$
+		其中， $ P $ 和 $ Q $ 是两个概率分布.
+	\end{marker}
+	通过命题\ref{MONOTONICITY}以及相应的证明，对数似然函数$L(\mathbf{y}\mid \boldsymbol{\theta})$通过EM算法更新迭代一直单调不减，下面给出算法收敛的证明.
+	\begin{ascolorbox3}{\citet{wu1983convergence}}
+		\citet{wu1983convergence}为确保似然序列$\{L(\mathbf{y}\mid \boldsymbol{\theta}^{(k)})\}$收敛到一个稳定值，给出以下几个条件：
+		\begin{itemize}
+			\item $\Omega$ 是$d$维欧几里得空间$\mathbb{R}^d$的中的子集.
+			\item  对于 $\forall L\left(\mathbf{y} \mid \boldsymbol{\theta_0}\right)>-\infty ,\, \Omega_{\boldsymbol{\theta_0}}=\left\{\boldsymbol{\theta} \in \Omega: L(\mathbf{y} \mid \boldsymbol{\theta}) \ge L\left(\mathbf{y} \mid \boldsymbol{\theta_0}\right)\right\} $ 是一个紧集. 
+			\item $L(\mathbf{y}\mid \boldsymbol{\theta})$ 在 $\Omega$ 中连续，在 $\Omega$ 上可微.
+		\end{itemize}
+	\end{ascolorbox3}
+	\begin{prop}[收敛性（CONVERGENCE）]\label{CONVERGENCE}
+	似然序列$\{L(\mathbf{y}\mid \boldsymbol{\theta}^{(k)})\}$单调收敛到$L^{\star}=L(\mathbf{y}\mid \boldsymbol{\theta}^{\star})$.
+	\end{prop}
+	
+	\begin{proof}
+			似然序列$\{L(\mathbf{y}\mid \boldsymbol{\theta}^{(k)})\}$单调收敛到$L^{\star}=L(\mathbf{y}\mid \boldsymbol{\theta}^{\star})$，即
+		
+		$$
+		\frac{\partial L(\mathbf{y}\mid \boldsymbol{\theta}^{\star})}{\partial \boldsymbol{\theta}^{\star}}=0 .
+		$$	
+		即也表示为
+		$$
+		\frac{\partial \log L(\mathbf{y}\mid \boldsymbol{\theta}^{\star})}{\partial \boldsymbol{\theta}^{\star}}=0 .
+		$$
+		这里假设 $L(y \mid \theta)$ 是单峰函数（在$\Omega$中，并可微），对\eqref{likelihood relation with Q function}式两边求导，有
+		\begin{equation}\label{convergence Q and H}
+			\frac{\partial \log L(\mathbf{y}\mid \boldsymbol{\theta})}{\partial\boldsymbol{\theta}}=\frac{\partial Q\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{(k)}\right)}{\partial \boldsymbol{\theta}}-\frac{\partial H\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{(k)}\right)}{\partial \boldsymbol{\theta}},
+		\end{equation}
+	由命题\ref{MONOTONICITY}的证明，有$H(\boldsymbol{\theta} , \boldsymbol{\theta}^{(k)})\le H(\boldsymbol{\theta}^{(k)}, \boldsymbol{\theta}^{(k)})$
+	，此时可以理解为到达了平稳点. 则对于所有$\boldsymbol{\theta}\in\Omega$， 有：
+	\begin{equation}\label{H function partial}
+		\left.\frac{\partial H\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{(k)}\right)}{\partial \boldsymbol{\theta}}\right|_{\boldsymbol{\theta}=\boldsymbol{\theta}^{(k)} }=0 .
+	\end{equation}
+	
+	令$\boldsymbol{\theta_0}$是$\boldsymbol{\theta}$的任一值，将$\boldsymbol{\theta}^{(k)}=\boldsymbol{\theta_0}$放入\eqref{convergence Q and H}中，又根据\eqref{H function partial}，可以得到
+	\begin{equation}\label{partial Likelihood}
+		\left.\frac{\partial \log L(\mathbf{y} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}}\right|_{\boldsymbol{\theta}=\boldsymbol{\theta_0}}=
+		\left.\frac{\partial Q\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{(k)}\right)}{\partial \boldsymbol{\theta}}\right|_{\boldsymbol{\theta}=\boldsymbol{\theta_0}}
+	\end{equation}
+	
+	假设$\boldsymbol{\theta}=\boldsymbol{\theta}^{\star}$时，$\boldsymbol{\theta}^{\star}$是$\log L(\mathbf{y} \mid \boldsymbol{\theta})$的一个平稳点，由\eqref{partial Likelihood}得
+	\begin{equation}
+		\left.\frac{\partial \log L(\mathbf{y} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}}\right|_{\boldsymbol{\theta}=\boldsymbol{\theta}^{\star}}=
+		\left.\frac{\partial Q\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{(k)}\right)}{\partial \boldsymbol{\theta}}\right|_{\boldsymbol{\theta}=\boldsymbol{\theta}^{\star}}
+	\end{equation}
+	则若$Q\left(\boldsymbol{\theta}, \boldsymbol{\theta}^{\star}\right)$在$\boldsymbol{\theta}^{\star}\in\Omega$全局最优，则EM算法可以收敛到鞍点$\boldsymbol{\theta}^{\star}$.
+	\end{proof}
+	
+	\subsection{Score Statistic}\label{Score Statistic}
+	\begin{ascolorbox16}{Score Statistic}
+		对数似然函数的梯度向量:
+		$$S(\boldsymbol{\theta})=\frac{\partial \log f(\mathbf{y}|\boldsymbol{\theta})}{\partial \boldsymbol{\theta}} $$
+		
+		完全对数似然函数的梯度向量:
+		$$S_c(\boldsymbol{\theta})=\frac{\partial \log f(\mathbf{y}, \mathbf{s}|\boldsymbol{\theta})}{\partial \boldsymbol{\theta}} $$
+	\end{ascolorbox16}
+	其中 $S(\boldsymbol{\theta})$ 可以通过 $S(\boldsymbol{\theta})$ 表示:
+	
+	\begin{DispWithArrows}[tikz=blue,tagged-lines=last]
+	S(\boldsymbol{\theta})& =\frac{\partial \log f(\mathbf{y} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}}=\frac{\partial f(\mathbf{y} \mid \boldsymbol{\theta}) / \partial \boldsymbol{\theta}}{f(\mathbf{y} \mid \boldsymbol{\theta})} \\
+	& =\sum \frac{\partial f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}} / f(\mathbf{y} \mid \boldsymbol{\theta}) \Arrow{加一个log变换} \\
+	& = \sum {\color{blue}\frac{\partial \log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}} \cdot \frac{f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{f(\mathbf{y} \mid \boldsymbol{\theta})} }\\
+	& =\sum \frac{\partial \log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}} \cdot f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) \\
+	& =E\{\frac{\partial \log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}} \mid \mathbf{y}, \boldsymbol{\theta}\}\\
+	&=E\{S_c(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\}.\label{S and conditional Sc}
+\end{DispWithArrows}
+
+i.e. $S(\boldsymbol{\theta})=\left.\frac{\partial Q\left(\boldsymbol{\theta}_0, \boldsymbol{\theta}\right)}{\partial \boldsymbol{\theta}_0}\right|_{\boldsymbol{\theta}_0=\boldsymbol{\theta} }$.
+	
+	\subsection{Missing Information}
+	最大似然估计的渐进方差由费希尔（Fisher）信息量决定，根据第\ref{Score Statistic}节的定义，费希尔信息量为：
+	\begin{equation}\label{fisher}
+		\mathcal{F}=E\{S(\boldsymbol{\theta})S(\boldsymbol{\theta})^T \mid \mathbf{y},\boldsymbol{\theta} \}=E\{J(\boldsymbol{\theta})\mid\mathbf{y}, \boldsymbol{\theta}\}
+	\end{equation}
+	其中$J(\boldsymbol{\theta})=-\frac{\partial^2 log f(\mathbf{y} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T}$，令
+	$J_c(\boldsymbol{\theta})=-\frac{\partial^2 log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T}$，$\mathcal{F}_c=E\{J_c\boldsymbol{\theta})\mid \mathbf{y}, \boldsymbol{\theta}\}$. 由\eqref{incomplete data decomposition}得：	
+	$$
+	\log f(\mathbf{y} \mid \boldsymbol{\theta}) =\log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})-\log f(\mathbf{s} \mid \mathbf{y},\boldsymbol{\theta}),	
+	$$
+	对上面等式关于参数$\boldsymbol{\theta}$同时求二次导，有：
+	$$
+		J(\boldsymbol{\theta})=J_c(\boldsymbol{\theta})+\frac{\partial^2 log f( \mathbf{s} \mid \mathbf{y},\boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T},
+	$$
+	两边求条件期望得：
+	\begin{equation}\label{conditional expectation}
+		E\{J(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\}=E\{J_c(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\}+E\{\frac{\partial^2 log f( \mathbf{s} \mid \mathbf{y},\boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T} \mid \mathbf{y}, \boldsymbol{\theta}\},	
+	\end{equation}
+	
+	观察等式左边，有
+	$$
+	\begin{aligned}
+		E\{J(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\} & = \sum_s J(\boldsymbol{\theta})\cdot f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) 
+		\\& = \sum_s-\frac{\partial^2 log f(\mathbf{y} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T}\cdot f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta})
+		\\ & = J(\boldsymbol{\theta})\cdot \sum_s f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) 
+		\\& = J(\boldsymbol{\theta})\cdot 1 \\
+		& = J(\boldsymbol{\theta})
+	\end{aligned}  
+	$$
+	则我们可以简化\eqref{conditional expectation}表示为：
+	\begin{equation}\label{error information}
+	\underbrace{J(\boldsymbol{\theta})}_{\text{观测信息}}	=\underbrace{E\{J_c(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\}}_{\text{条件期望完整信息}}-\underbrace{J_m(\boldsymbol{\theta})}_{\text{缺失信息}}
+	\end{equation}
+	其中$J_m(\boldsymbol{\theta})=E\{\frac{\partial^2 log f( \mathbf{s} \mid \mathbf{y},\boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T} \mid \mathbf{y}, \boldsymbol{\theta}\}$，可以发现存在以下关系：
+	$$
+	\begin{WithArrows}
+		-J_m(\boldsymbol{\theta})&=cov\{S_c(\boldsymbol{\theta})\mid \mathbf{y}, \boldsymbol{\theta}\}\\
+		&=E\{S_c(\boldsymbol{\theta})S_c(\boldsymbol{\theta})^T \mid \mathbf{y}, \boldsymbol{\theta} \}-(E\{S_c(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\})^2\Arrow{根据\eqref{S and conditional Sc}}\\
+		&=E\{S_c(\boldsymbol{\theta})S_c(\boldsymbol{\theta})^T \mid \mathbf{y}, \boldsymbol{\theta} \}-S(\boldsymbol{\theta})S(\boldsymbol{\theta})^T	
+	\end{WithArrows}
+	$$
+	则\eqref{conditional expectation}可以表示为：
+	\begin{DispWithArrows}[tikz=blue,tagged-lines=first]
+		J(\boldsymbol{\theta})&=E\{J_c(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\}-E\{S_c(\boldsymbol{\theta})S_c(\boldsymbol{\theta})^T \mid \mathbf{y}, \boldsymbol{\theta} \}+S(\boldsymbol{\theta})S(\boldsymbol{\theta})^T\\
+		&=E\{-\frac{\partial^2 log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T} \mid \mathbf{y}, \boldsymbol{\theta}\}-E\{S_c(\boldsymbol{\theta})S_c(\boldsymbol{\theta})^T \mid \mathbf{y}, \boldsymbol{\theta} \}+S(\boldsymbol{\theta})S(\boldsymbol{\theta})^T \Arrow{求和再求导等价于\\求导再求和}\\
+		&=-\frac{\partial^2 Q\left(\boldsymbol{\theta}, \hat{\boldsymbol{\theta}}\right)}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T}-E\{S_c(\boldsymbol{\theta})S_c(\boldsymbol{\theta})^T \mid \mathbf{y}, \boldsymbol{\theta} \}+\underbrace{S(\boldsymbol{\theta})S(\boldsymbol{\theta})^T}_{\text{最优时，一般约等于0}}
+	\end{DispWithArrows}
+	
+	\subsection{Toy Example: 求解混合分布参数}
+	
+	\begin{ascolorbox1}[求解混合分布参数]{Toy Example}
+		如下数据：
+		\begin{align*}
+			&3.54, 3.90, 3.93, 5.19, 3.58, 4.60, 3.85, 4.69, 4.29, 4.067, \\
+			&3.77, 3.45, 5.36, 2.62, 4.80, 4.65, 3.65, 3.67, 6.23, 3.35, \\
+			&1.58, 0.19, -1.89, 0.08, 0.34, 0.90, -0.03, 0.55, -0.57, -1.20
+		\end{align*}
+		可能来自于正态分布 $N(0,1)$ 与 $N(\mu,1)$ 的混合，混合比为 $1-p$ 与 $p$，且 $0<p<1$。求出 $p$ 与 $\mu$ 的极大似然估计.
+	\end{ascolorbox1}
+	
+	首先给出混合密度：
+	$$f(y;p,\mu)=p\phi(y-\mu)+(1-p)\phi(y)$$
+	 其中$\phi(x)=\frac{1}{\sqrt{2\pi}}e^{-\frac{1}{2}x^2}$，设从混合分布中抽取样本$Y=(Y_1,Y_2,\cdots,Y_n)$，得到其似然函数：
+	$$L(\mu,p,Y)=\prod_{i=1}^{n}(p\phi(Y_i-\mu)+(1-p)\phi(Y_i)).$$
+	对数后
+	$$l(\mu,p;Y)=\sum_{i=1}^{n}log(p\phi(Y_i-\mu)+(1-p)\phi(Y_i))$$
+	 运用EM算法求解：引入潜在变量$Z=(z_1,z_2,\cdots,z_n)$，且$z_1,z_2,\cdots,z_n$相互独立，其中：
+	$$Z_i=
+	\left\{\begin{matrix}
+		1& N(\mu,1)\\
+		0& N(0,1)
+	\end{matrix}\right.
+	$$
+	 以及$P(Z_i=1)=p,i=1,2,\cdots,n$，有$Y_i|Z_i=1\sim N(\mu,1)$，$Y_i|Z_i=0\sim N(0,1)$，则$(Z_i,Y_i)$的似然函数为：
+	$$L(\mu,p;Y,Z)=\prod_{i=1}^{n}p^{Z_i}\phi(Y_i-\mu)^{Z_i}\phi(Y_i)^{1-Z_i}$$
+	对上述似然函数取对数并去掉与$p$、$\mu$无关的量得:
+	$$l_1(\mu,p;Y,Z)=\sum_{i=1}^{n}Z_ilogp-\frac{1}{2}\sum_{i=1}^{n}Z_i(Y_i-\mu)^2+(n-\sum_{i=1}^{n}Z_i)log(1-p).$$
+	假设在第$k$步迭代中，有估计值$\mu^{k}$、$p^{k}$，通过E步和M步得到$\mu$、$p$的新的估计值$\mu^{(k+1)}$、$p^{(k+1)}$.
+	
+	在E步中，令：
+	\begin{align*}
+		Q(\mu,p|\mu^{(k)},p^{(k)},Y)
+		&=E_Z[l_1(\mu,p;Y,Z)|\mu^{(k)},p^{(k)},Y]\\
+		&=\sum_{i=1}^{n}E_Z[Z_i|\mu^{(k)},p^{(k)},Y]logp\\
+		&-\frac{1}{2}\sum_{i=1}^{n}E_Z[Z_i|\mu^{(k)},p^{(k)},Y](Y_i-\mu)^2\\
+		&+(n-\sum_{i=1}^{n}E_Z[Z_i|\mu^{(k)},p^{(k)},Y]log(1-p))
+	\end{align*}
+	易知：
+	$$Z_i^{(K+1)}=E_Z[Z_i|\mu^{(k)},p^{(k)},Y]=\frac{p^{(k)}\phi(Y_i-\mu^{(k)})}{p^{(k)}\phi(Y_i-\mu^{(k)})+(1-p^{(k)})\phi(Y_i)}$$
+	
+	\begin{mybox1}
+		根据贝叶斯定理，我们有：
+		\[ P(Z_i = 1 | Y_i, \mu^{(k)}, p^{(k)}) = \frac{P(Y_i | Z_i = 1, \mu^{(k)}) P(Z_i = 1 | \mu^{(k)}, p^{(k)})}{P(Y_i | \mu^{(k)}, p^{(k)})} \]
+		
+		这里：
+		\begin{itemize}
+			\item $P(Y_i | Z_i = 1, \mu^{(k)})$ 是在$Z_i = 1$条件下的$Y_i$的概率密度，即$\phi(Y_i - \mu^{(k)})$.
+			\item $P(Z_i = 1 | \mu^{(k)}, p^{(k)})$ 是$Z_i = 1$的先验概率，即$p^{(k)}$.
+			\item $P(Y_i | \mu^{(k)}, p^{(k)})$ 是$Y_i$的总概率，它等于两种情况的加权和，即$p^{(k)}\phi(Y_i - \mu^{(k)}) + (1 - p^{(k)})\phi(Y_i)$.
+		\end{itemize}
+		
+		因此，	
+		\[ Z_i^{(k+1)} = E[Z_i|\mu^{(k)},p^{(k)},Y_i] = \frac{p^{(k)}\phi(Y_i - \mu^{(k)})}{p^{(k)}\phi(Y_i - \mu^{(k)}) + (1 - p^{(k)})\phi(Y_i)} \]		
+	\end{mybox1}
+	
+	在M步中，解：
+	$$
+	\left\{\begin{matrix}
+		\frac{\partial Q}{\partial \mu}=0\\
+		\frac{\partial Q}{\partial p}=0
+	\end{matrix}\right.
+	$$
+	求得：
+	$$
+	\mu^{(k+1)}=\frac{\sum_{i=1}^{n}\frac{\phi(Y_i-\mu^{(k)})Y_i}{p^{(k)}\phi(Y_i-\mu^{(k)})+(1-p^{(k)})\phi(Y_i)}}{\sum_{i=1}^{n}\frac{\phi(Y_i-\mu^{(k)})}{p^{(k)}\phi(Y_i-\mu^{(k)})+(1-p^{(k)})\phi(Y_i)}};
+	$$
+	
+	$$
+		p^{(k+1)}=\frac{1}{n}\sum_{i=1}^{n}\frac{p^{(k)}\phi(Y_i-\mu^{(k)})}{p^{(k)}\phi(Y_i-\mu^{(k)})+(1-p^{(k)})\phi(Y_i)}.
+	$$
+	
+	\section{Example: MULTINOMIAL WITH COMPLEX CELL STRUCTURE\label{cell example}}
+
+	假设我们有$n=435$次观测，观测对象是一个有四个遗传性状的多项式分布，这些性状的概率结构如表\ref{cell}所示. 表中还给出了这些性状观测到的频率. （其中基因为$O$、$A$以及$B$，三个基因相互组合，通过观测值求解每个基因对应的概率$r$、$A$和$B$.）
+	\subsection{MLE Method}
+	\begin{table}[H]
+		\caption{观测细胞数据}
+		\label{cell}
+		\centering
+		\begin{tabular}{ccc}
+			
+			\hline \begin{tabular}{c} 
+				类别 \\
+				（细胞）
+			\end{tabular} & \begin{tabular}{c} 
+				细胞 \\
+				概率
+			\end{tabular} & \begin{tabular}{c} 
+				观测 \\
+				频率
+			\end{tabular} \\
+			\hline $\mathrm{O}$ & $r^2$ & $n_O=176$ \\
+			$\mathrm{~A}$ & $p^2+2 p r$ & $n_A=182$ \\
+			$\mathrm{~B}$ & $q^2+2 q r$ & $n_B=60$ \\
+			$\mathrm{AB}$ & $2 p q$ & $n_{A B}=17$ \\
+			\hline
+			
+		\end{tabular}
+	\end{table}
+	因此，观测数据由性状频率的向量给出：
+	$$
+	\boldsymbol{y}=\left(n_O, n_A, n_B, n_{A B}\right)^T .
+	$$
+	未知参数的向量为：
+	$$
+	\Psi=(p, q)^T,
+	$$
+	因为 $r=1-p-q$. 目标是基于$\boldsymbol{y}$找到$\Psi$的最大似然估计（MLE）. 这是遗传学中基因频率估计的一个著名问题，很多研究都有讨论.
+	
+	参数$\boldsymbol{\Psi}$的对数似然函数（除了一个加性常数之外）为
+	$$
+	\log L(\Psi)=2 n_0 \log  \underbrace{r}_{\pi_1}+n_A \log \underbrace{\left(p^2+2 p r\right)}_{\pi_2} +n_B \log \underbrace{\left(q^2+2 q r\right)}_{\pi_3} +n_{A B} \log \underbrace{(2 p q)}_{\pi_4},
+	$$
+	它没有一个封闭形式的解决方案来获得$\hat{\boldsymbol{\Psi}}$，即$\Psi$的最大似然估计（MLE）.
+	
+	我们将单元频率表示为$\pi_j(j=1,2,3,4)$。那么它们关于$\Psi$的一阶和二阶导数如下：
+	$$
+	\begin{array}{cc}
+		\frac{\partial \pi_1(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}=\left(\begin{array}{c}
+			-2 r \\
+			-2 r
+		\end{array}\right) ; & \frac{\partial \pi_2(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}=\left(\begin{array}{r}
+		   2p+2r \\
+			-2 p
+		\end{array}\right) \\
+		\frac{\partial \pi_3(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}=\left(\begin{array}{r}
+			2 q+2r \\
+			-2 q
+		\end{array}\right) ; & \frac{\partial \pi_4(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}=\left(\begin{array}{c}
+			2 q \\
+			2 p
+		\end{array}\right) \\
+		\frac{\partial^2 \pi_1(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi} \partial \boldsymbol{\Psi}^T}=\left(\begin{array}{cc}
+			-2 & -2 \\
+			-2 & -2
+		\end{array}\right) ; & \frac{\partial^2 \pi_2(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi} \partial \boldsymbol{\Psi}^T}=\left(\begin{array}{rr}
+			0 & -2 \\
+			-2 & 0
+		\end{array}\right) \\
+		\frac{\partial^2 \pi_3(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi} \partial \boldsymbol{\Psi}^T}=\left(\begin{array}{rr}
+			-2 & 0 \\
+			2 & -2
+		\end{array}\right) ; & \frac{\partial^2 \pi_4(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi} \partial \boldsymbol{\Psi}^T}=\left(\begin{array}{cc}
+			0 & 2 \\
+			2 & 0
+		\end{array}\right) .
+	\end{array}
+	$$
+	
+	这导致了如下的似然方程：
+	$$
+	\partial \log L(\boldsymbol{\Psi}) / \partial \boldsymbol{\Psi}=\sum_{j=1}^4\left(\frac{n_j}{\pi_j}\right) \frac{\partial \pi_j(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}=\mathbf{0},
+	$$
+	以及对数似然的Hessian矩阵：
+	$$
+	\partial^2 \log L(\boldsymbol{\Psi}) / \partial \boldsymbol{\Psi} \partial \boldsymbol{\Psi}^T=\sum_{j=1}^4 n_j\left\{\left(\frac{1}{\pi_j}\right) \frac{\partial^2 \pi_j(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi} \boldsymbol{\Psi}^T}-\left(\frac{1}{\pi_j^2}\right) \frac{\partial \pi_j(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}\left(\frac{\partial \pi_j(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}^T}\right)\right\} .
+	$$
+	
+	费舍尔（预期）信息矩阵由以下公式给出：
+	$$
+	\begin{aligned}
+		\mathcal{I}(\boldsymbol{\Psi}) & =E\left\{-\partial^2 \log L(\boldsymbol{\Psi}) / \partial \boldsymbol{\Psi} \partial \boldsymbol{\Psi}^T\right\} \\
+		& =n\left\{\sum_{j=1}^4\left(\frac{1}{\pi_j}\right) \frac{\partial \pi_j(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}}\left(\frac{\partial \pi_j(\boldsymbol{\Psi})}{\partial \boldsymbol{\Psi}^T}\right)\right\},
+	\end{aligned}
+	$$
+	当条件设置为 \(\boldsymbol{\Psi}=\hat{\boldsymbol{\Psi}}\) 时，所得到的协方差矩阵为：
+	\[
+	\left(\begin{array}{rr}
+		0.000011008 & -0.000103688 \\
+		-0.000103688 & 0.000040212
+	\end{array}\right) ;
+	\]
+	参见\citet{monahan2011numerical}对这个例子中牛顿方法、评分方法和EM算法的有趣讨论.
+	
+	\subsection{EM Method}
+	现在让我们讨论将EM算法应用于这个问题. 在将EM算法应用于这个问题时，一个自然的选择是完整数据向量为：
+	\[
+	\boldsymbol{x}=\left(n_O, \boldsymbol{z}^T\right)^T,
+	\]
+	其中
+	\[
+	\boldsymbol{z}=\left(n_{A A}, n_{A O}, n_{B B}, n_{B O}\right)^T
+	\]
+	表示不可观测或“缺失”的数据。这些数据被认为是频率 \(n_{AA}, n_{AO}, n_{BB}\)（因为这些基因显现出来是A，实则可能是AO或者AA），和 \(n_{BO}\)，对应于表格 2.7 中的中间单元格。值得注意的是，由于总频率 \(n\) 是固定的，因此变量$\boldsymbol{x}$中的五个单元格频率足以代表完整数据. 如果我们认为 \(\boldsymbol{x}\) 的分布是关于表格 \ref{Complete-Data Structure}中指定的六个单元格概率的 \(n\) 次抽取的多项式分布，那么很明显，观察到的频率向量 \(y\) 具有所需的多项式分布，如表\ref{cell}所指定.
+		\begin{table}[H]
+		\caption{Complete-Data Structure for Example } 
+		\label{Complete-Data Structure}
+		\centering
+		\begin{tabular}{ccc}
+			\hline \begin{tabular}{c} 
+				Category \\
+				$($ Cell $)$
+			\end{tabular} & \begin{tabular}{c} 
+				Cell \\
+				Probability
+			\end{tabular} & \begin{tabular}{c} 
+				Notation for \\
+				Frequency
+			\end{tabular} \\
+			\hline $\mathrm{O}$ & $r^2$ & $n_O$ \\
+			$\mathrm{AA}$ & $p^2$ & $n_{A A}$ \\
+			$\mathrm{AO}$ & $2 p r$ & $n_{A O}$ \\
+			$\mathrm{BB}$ & $q^2$ & $n_{B B}$ \\
+			$\mathrm{BO}$ & $2 q r$ & $n_{B O}$ \\
+			$\mathrm{AB}$ & $2 p q$ & $n_{A B}$ \\
+			\hline
+		\end{tabular}
+	\end{table}
+
+	对于 \(\boldsymbol{\Psi}\)，完整数据的对数似然函数可以写成（除了一个加法常数）如下形式：
+	\begin{equation}\label{cell likelihood}
+		\log L_c(\boldsymbol{\Psi})=2 n_A^{+} \log p+2 n_B^{+} \log q+2 n_O^{+} \log r,
+	\end{equation}
+	其中
+	\[
+	\begin{aligned}
+		& n_A^{+}=n_{AA}+\frac{1}{2} n_{AO}+\frac{1}{2} n_{AB}, \\
+		& n_B^{+}=n_{BB}+\frac{1}{2} n_{BO}+\frac{1}{2} n_{AB},
+	\end{aligned}
+	\]
+	和
+	\[
+	n_O^{+}=n_O+\frac{1}{2} n_{AO}+\frac{1}{2} n_{BO} .
+	\]
+	在这里，\(\log L_c(\boldsymbol{\Psi})\) 表示的是完整数据的对数似然函数，它是用于估计统计模型参数的一个关键函数.
+	
+	公式\eqref{cell likelihood}呈现的是关于频率 \(2n_A^{+}, 2n_B^{+}\) 和 \(2n_O^{+}\) 的多项式对数似然函数，对应于三个单元格的概率 \(p, q\) 和 \(r\). 因此，通过最大化\eqref{cell likelihood} 得到这些概率的完整数据最大似然估计（MLE）如下：
+	\begin{equation}\label{cell EM MLE}
+		\hat{p}=\frac{n_A^{+}}{n} ; \quad \hat{q}=\frac{n_B^{+}}{n} .
+	\end{equation}
+	当完整数据似然函数属于规则指数族时，E步骤和M步骤会简化，就像这个例子一样. E步骤仅需要计算当前条件下 \(\boldsymbol{\Psi}\) 的充分统计量的期望值，这里是 \(\left(n_A^{+}, n_B^{+}\right)^T\). M步骤随后通过解由等同于这个期望的方程得到 \(\boldsymbol{\Psi}^{(k+1)}\). 对于这个问题，实际上 \(\boldsymbol{\Psi}^{(k+1)}\) 是通过用观察到的数据给定的 \(n_A^{+}\) 和 \(n_B^{+}\) 的当前条件期望来替换\eqref{cell EM MLE}右侧的值来得到的.
+	
+	为了计算 \(n_A^{+}\) 和 \(n_B^{+}\)（即E步）的这些条件期望，我们需要计算这个问题中不可观察数据 \(z\) 的条件期望. 考虑 \(z\) 的第一个元素，从变量$\boldsymbol{x}$可知是 \(n_{AA}\).
+	
+	首先，可以验证，在给定 \(\boldsymbol{y}\) 的条件下，\(n_A, n_{AA}\) 实际上具有二项分布，样本大小为 \(n_A\)，概率参数为
+	\[
+	p^{(k)^2} /\left(p^{(k)^2}+2 p^{(k)} r^{(k)}\right),
+	\]
+	\begin{ascolorbox16}{Why 服从二项分布}
+		在迭代的第$k$步，根据贝叶斯定理，有
+		$$
+		\begin{aligned}
+			&p\left(\boldsymbol{z}^{(k+1)}=A A \mid \mathbf{y} =A, \boldsymbol{\Psi}^{(k)}\right)
+			=\frac{p\left(\mathbf{y}=A \mid \boldsymbol{z}^{(k)}=A A, \boldsymbol{\Psi}^{(k)}\right) \cdot P\left(\boldsymbol{z}^{(k)}=A A \mid \boldsymbol{\Psi}^{(k)}\right)}{p\left(\mathbf{y}=A \mid \boldsymbol{z}^{(k)}=A A, \boldsymbol{\Psi}^{(k)}\right)}\\
+			&= \frac{p\left(\mathbf{y}=A \mid \boldsymbol{z}^{(k)}=A A, \boldsymbol{\Psi}^{(k)}\right) \cdot P\left(\boldsymbol{z}^{(k)}=A A \mid \boldsymbol{\Psi}^{(k)}\right)}{p\left(\mathbf{y}=A,\boldsymbol{z}^{(k)}=A A\mid  \boldsymbol{\Psi}^{(k)}\right)+p\left(\mathbf{y}=A,\boldsymbol{z}^{(k)}=AO \mid  \boldsymbol{\Psi}^{(k)}\right)}\\
+			&=\frac{p^{(k)^2}\cdot p\left(\mathbf{y}=A \mid \boldsymbol{z}^{(k)}=A A, \boldsymbol{\Psi}^{(k)}\right)}{(p^{(k)^2}+2 p^{(k)} r^{(k)})\cdot p\left(\mathbf{y}=A \mid \boldsymbol{z}^{(k)}=A A, \boldsymbol{\Psi}^{(k)}\right)}\\
+			&=\frac{p^{(k)^2}}{p^{(k)^2}+2 p^{(k)} r^{(k)}}.
+		\end{aligned}
+		$$		
+	\end{ascolorbox16}
+	这里 \(\boldsymbol{\Psi}^{(k)}\) 代替了未知参数向量 \(\boldsymbol{\Psi}\) 在第 \(k+1\) 次迭代中的使用. 因此，给定 \(y\) 的 \(n_{AA}\) 的当前条件期望可以通过
+	\[
+	E_{\boldsymbol{\Psi}^{(k)}}\left(n_{AA}\right)=n_{AA}^{(k)},
+	\]
+	得到，其中
+	\begin{equation}\label{naa}
+		n_{AA}^{(k)}=n_A p^{(k)^2} /\left(p^{(k)^2}+2 p^{(k)} r^{(k)}\right) .
+	\end{equation}
+	
+	同样，给定 \(\boldsymbol{y}\) 的 \(n_{AO}, n_{BB}\)和 \(n_{BO}\) 的当前条件期望也可以计算出来. M步骤的执行给出
+	\[
+	p^{(k+1)}=\left(n_{AA}^{(k)}+\frac{1}{2} n_{AO}^{(k)}+\frac{1}{2} n_{AB}\right) / n
+	\]
+	和
+	\[
+	q^{(k+1)}=\left(n_{BB}^{(k)}+\frac{1}{2} n_{BO}^{(k)}+\frac{1}{2} n_{AB}\right) / n .
+	\]
+	这个问题的EM算法结果在表\ref{EM results for cell}中给出。可以将 \(\boldsymbol{\Psi}\) 的最大似然估计（MLE）视为第 \(k=4\) 次迭代时 \(\Psi^{(k)}\) 的值.
+	
+	\begin{table}[H]
+		\caption{Results of the EM Algorithm for Example.}
+		\label{EM results for cell}
+		\centering 
+		\begin{tabular}{ccccr}
+			\hline Iteration & $p^{(k)}$ & $q^{(k)}$ & $r^{(k)}$ & $-\log L\left(\boldsymbol{\Psi}^{(k)}\right)$ \\
+			\hline 0 & 0.26399 & 0.09299 & 0.64302 & 2.5619001 \\
+			1 & 0.26436 & 0.09316 & 0.64248 & 2.5577875 \\
+			2 & 0.26443 & 0.09317 & 0.64240 & 2.5577729 \\
+			3 & 0.26444 & 0.09317 & 0.64239 & 2.5577726 \\
+			4 & 0.26444 & 0.09317 & 0.64239 & 2.5577726 \\
+			\hline
+		\end{tabular}
+	\end{table}
+	
+	
+	\section{Monte Carlo Versions of the EM Algorithm}
+	\subsection{MONTE CARLO EM}
+	在EM算法中，E步骤可能难以实施，因为难以计算对数似然的期望值.\citet{wei1990monte,wei1990posterior}建议采用蒙特卡洛方法，通过在第$(k+1)$次迭代的E步骤中从条件分布$ f(\mathbf{s} \mid \mathbf{y}, \boldsymbol{\theta}) $模拟缺失数据$\mathbf{s}$，然后最大化完全数据对数似然的近似条件期望：
+	\begin{equation}\label{MCEM Q function}
+		\hat{Q}\left(\boldsymbol{\theta};\hat{\boldsymbol{\theta}} \right)=\frac{1}{m} \sum_{i=1}^{m} \log \left[f\left(\mathbf{y}, \mathbf{s}^{(i)} \mid \boldsymbol{\theta}\right)\right],
+	\end{equation}
+	当$m \rightarrow \infty$时，这个公式的极限形式就是实际的$Q\left(\boldsymbol{\theta};\hat{\boldsymbol{\theta}} \right)$. 这正是蒙特卡洛积分的核心思想. 尽管最大化公式\eqref{MCEM Q function}通常可能很困难，但有时，在指数族情形下，最大化问题可以有解析形式的解. 
+	\begin{marker}
+		在MCEM（Monte Carlo Expectation-Maximization）中，蒙特卡洛误差在E步骤引入，丧失了单调性属性. 但在某些情况下，该算法以很高的概率接近一个极大化值.
+	\end{marker}
+	\subsection{Estimation of Standard Error with MCEM}
+	最大似然估计（MLE）$\hat{\boldsymbol{\theta}}$的协方差矩阵估计由观测信息矩阵$J(\hat{\boldsymbol{\theta}})$的逆给出，根据公式\eqref{error information}，
+	\begin{equation}\label{MCEM ERROR}
+		J(\boldsymbol{\theta})	=E\{J_c(\boldsymbol{\theta}) \mid \mathbf{y}, \boldsymbol{\theta}\}-J_m(\boldsymbol{\theta}),
+	\end{equation}
+	其中
+	$$
+	J_c(\boldsymbol{\theta})=-\frac{\partial^2 log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})}{\partial \boldsymbol{\theta}\partial \boldsymbol{\theta}^T},
+	$$
+	
+	现在考虑单一未知参数$\boldsymbol{\theta}$的情况，并将完全数据对数似然函数$\log f(\mathbf{y}, \mathbf{s} \mid \boldsymbol{\theta})$写为$\log f(\mathbf{y}, \mathbf{s}^{(i)} \mid \boldsymbol{\theta})$. 为了通过蒙特卡洛评估计算\eqref{MCEM ERROR}中的期望值，我们可以将$J(\boldsymbol{\theta})$表示为以下形式：
+	$$
+	\begin{aligned}
+		& J(\boldsymbol{\theta}) \approx \frac{1}{m} \sum_{j=\mathbf{1}}^m-\partial^2 \log f(\mathbf{y}, \mathbf{s}^{(i)} \mid \boldsymbol{\theta}) / \partial \boldsymbol{\theta}^2 \\
+		&+\frac{1}{m} \sum_{j=\mathbf{1}}^m\left\{\partial \log f(\mathbf{y}, \mathbf{s}^{(i)} \mid \boldsymbol{\theta}) / \partial \boldsymbol{\theta}-\frac{1}{m} \sum_{j=\mathbf{1}}^m \partial \log f(\mathbf{y}, \mathbf{s}^{(i)} \mid \boldsymbol{\theta}) / \partial \boldsymbol{\theta}\right\}^2.
+	\end{aligned}
+	$$
+	其中$\mathbf{s}^{(j)}(j=1, \ldots, m)$是从缺失数据分布生成的，使用MCEM估计的$\boldsymbol{\theta}$.
+	\subsection{Continue to Section \ref{cell example}}
+	在例子Section \ref{cell example} 中，如果我们采用蒙特卡罗（MC）期望步骤（E-step），我们可以分别从两个独立的二项分布中抽取 \(z_{11}, \ldots, z_{1m}\) 和 \(z_{21}, \ldots, z_{2m}\)，其中第一个二项分布的样本大小为 \(n_A\)，概率参数为
+	\[
+	p^{(k)^2} /\left(p^{(k)^2}+2 p^{(k)} r^{(k)}\right),
+	\]
+	而第二个二项分布的样本大小为 \(n_B\)，概率参数为
+	\[
+	q^{(k)^2} /\left(q^{(k)^2}+2 q^{(k)} r^{(k)}\right),
+	\]
+	在第 \(k+1\) 次迭代中，用 \(\boldsymbol{\Psi}^{(k)}\) 替代未知的参数向量 \(\boldsymbol{\Psi}\). 然后，这些抽取的值可以代替方程\eqref{naa}使用，如下所示：
+	\[
+	n_{AA}^{(k)}=\bar{z}_{1m}=\frac{1}{m} \sum_{j=1}^m z_{1i}, \quad n_{BB}^{(k)}=\bar{z}_{2m}=\frac{1}{m} \sum_{j=1}^m z_{2i} .
+	\]
+	在这个例子中，通过使用蒙特卡罗方法模拟缺失数据 \(z\) 的可能值，我们可以获得对 \(n_{AA}\) 和 \(n_{BB}\) 的估计。这是通过在每个迭代中从相应的二项分布中抽取样本来实现的，然后计算这些抽取值的平均数来估计 \(n_{AA}\) 和 \(n_{BB}\). 这种方法允许我们在存在缺失或不完整数据时，使用模拟数据来估计缺失值，从而在EM算法中实施期望步骤.
+	%参考文献
+	%-------------------------------------------
+	\newpage
+	\bibliographystyle{plainnat}%
+	\bibliography{refs.bib}
+\end{document}

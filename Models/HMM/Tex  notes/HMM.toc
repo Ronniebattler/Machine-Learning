@@ -1,6 +1,8 @@
 \babel@toc {english}{}\relax 
-\contentsline {section}{\numberline {1}HMM}{2}{section.1}%
+\contentsline {section}{\numberline {1}隐马尔可夫模型}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}HMM模型组成部分}{2}{subsection.1.1}%
 \contentsline {section}{\numberline {2}求解步骤}{3}{section.2}%
-\contentsline {subsection}{\numberline {2.1}估计问题 (Evaluation Problem)}{3}{subsection.2.1}%
-\contentsline {subsection}{\numberline {2.2}解码问题 (Decoding Problem)}{3}{subsection.2.2}%
-\contentsline {subsection}{\numberline {2.3}学习问题 (Learning Problem)}{3}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.1}Q函数的构造}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}估计问题 (Evaluation Problem)}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}解码问题 (Decoding Problem)}{5}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}学习问题 (Learning Problem)}{5}{subsection.2.4}%

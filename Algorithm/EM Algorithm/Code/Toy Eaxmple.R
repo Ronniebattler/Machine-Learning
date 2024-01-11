@@ -1,0 +1,19 @@
+#R code
+fun1=function(Y,ep=1e-5){
+  phi=function(x){1/sqrt(2*pi)*exp(-x^2/2)}
+  p=0.6;mu=3.5;n=length(Y)
+   k=1
+   repeat{
+     k=k+1
+     p[k]=1/n*p[k-1]*sum(phi(Y-mu[k-1])/(p[k-1]*phi(Y-mu[k-1])+(1-p[k-1])*phi(Y)))
+     mu[k]=sum(phi(Y-mu[k-1])*Y/(p[k-1]*phi(Y-mu[k-1])+(1-p[k-1])*phi(Y)))/
+      sum(phi(Y-mu[k-1])/(p[k-1]*phi(Y-mu[k-1])+(1-p[k-1])*phi(Y)))
+     if(abs(p[k]-p[k-1])<=ep&abs(mu[k]-mu[k-1])<=ep)
+       break
+     }
+  list(p=p,mu=mu,iter=k-1)
+   }
+ Y=c(3.54,3.90,3.93,5.19,3.58,4.60,3.85,4.69,4.29,4.067,
+       3.77,3.45,5.36,2.62,4.80,4.65,3.65,3.67,6.23,3.35,
+       0.19,-1.89,0.08,034,0.90,-0.03,0.55,-0.57,-1.20)
+ fun1(Y,ep=1e-5)
